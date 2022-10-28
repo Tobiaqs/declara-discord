@@ -26,14 +26,10 @@ class UserData:
         self.__load_data()
 
     def __load_data(self):
-        print(f'testing path {self.file_path}')
         if os.path.exists(self.file_path):
-            print('found it')
             with open(self.file_path) as json_file:
                 # TODO: What if data is invalid???
-                print('loading')
                 self.user_data = json.loads(json_file.read())
-                print(self.user_data)
         else:
             self.user_data = json.loads('{}')
             self.__store_data()
