@@ -238,8 +238,7 @@ class MyClient(discord.Client):
         else:
             self.user_data.add_data(message.author.id, content)
 
-        return await message.channel.send(self.user_data.get(user_id))
-        # return await message.channel.send('Something went wrong, I\'m sorry!')
+        return await message.channel.send('I don\' know what you mean :(')
 
 
 intents = discord.Intents.default()
