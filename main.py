@@ -184,7 +184,18 @@ class MyClient(discord.Client):
                 return await message.channel.send('Updated your IBAN number!')
             return await message.channel.send('Failed to update your IBAN...')
         elif command in self.help_commands:
-            ...
+            return await message.channel.send(
+                'Hi, I\'m Clarna and I can help you create and send declarations for Boreas!\n\n'
+                'These are the commands you can send me:\n'
+                '$reset: Starts over\n'
+                '$send: Creates the PDF and sends it\n'
+                '$email <email>: Update your email address\n'
+                '$name <name>: Update your name\n'
+                '$iban <iban>: Update your name\n'
+                '$message <message;amount>: Add a reason and an amount, separated by a semicolon\n'
+                '$board <bool> = True: Set to true to also send an email to the board\n'
+                '$info: Gets the current info that I have about you\n'
+            )
         elif command in self.reset_commands:
             await message.channel.send('Starting over ;\')')
             self.user_data.reset_user(user_id)
