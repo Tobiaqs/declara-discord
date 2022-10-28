@@ -5,6 +5,7 @@ import json
 import schwifty
 
 from dotenv import load_dotenv
+from declara import Declara
 
 # TODO: Add question if iban/name/email is still correct -> reset otherwise
 
@@ -38,6 +39,10 @@ class UserData:
         with open(self.file_path, 'w') as json_file:
             json.dump(self.user_data, json_file, indent=4)
 
+    def __is_valid(self, user_id):
+        data = self.user_data[user_id]
+        return data['email'] and data['name'] and data['iban'] and data['messages'] and data['attachments']
+
     def reset_user(self, user_id):
         self.__init_user_if_not_exist(user_id)
         self.user_data[user_id]['messages'] = []
@@ -55,7 +60,7 @@ class UserData:
                 'attachments': [],
                 'send_to_board': True
             }
-        self.__store_data()
+            self.__store_data()
 
     def add_data(self, user_id, text):
         splits = text.split(';')
@@ -74,6 +79,7 @@ class UserData:
         }
         self.user_data[user_id]['messages'].append(line)
         self.__store_data()
+        return True
 
     def add_attachment(self, user_id, url):
         self.__init_user_if_not_exist(user_id)
@@ -98,7 +104,7 @@ class UserData:
 
     def update_board(self, user_id, send_to_board):
         self.__init_user_if_not_exist(user_id)
-        self.user_data[user_id]['send_to_board'] = bool(send_to_board)
+        self.user_data[user_id]['send_to_board'] = send_to_board
         self.__store_data()
 
     def update_email(self, user_id, email):
@@ -127,8 +133,24 @@ class UserData:
             return self.user_data[user_id]
 
     def send(self, user_id):
-        # TODO: VALIDATE CONTENT!
-        ...
+        if not self.__is_valid(user_id):
+            return False
+        try:
+            data = self.user_data[user_id]
+            declara = Declara()
+            declara.rows = [Declara.Row(m['message'], m['amount']) for m in data['messages']]
+            declara.name = data['name']
+            declara.iban = data['iban']
+            declara.attachments = data['attachments']
+
+            declara.send_email(
+                extra_addresses=[data['email']],
+                only_extra_addresses=not data['send_to_board']
+            )
+        except:
+            return False
+        self.reset_user(user_id)
+        return True
 
 
 class MyClient(discord.Client):
@@ -207,32 +229,38 @@ class MyClient(discord.Client):
         elif command in self.info_commands:
             return await message.channel.send(self.user_data.get(user_id, True))
         elif command in self.reset_commands:
-            await message.channel.send('Starting over ;\')')
             self.user_data.reset_user(user_id)
+            return await message.channel.send('Starting over ;\')')
         elif command in self.send_commands:
-            ...
+            if self.user_data.send(user_id):
+                return await message.channel.send('Sending your email!')
+            return await message.channel.send('Hmm, something went wrong with sending your email. Did you fill in all information???')
         elif command in self.update_name_commands:
             self.user_data.update_name(user_id, command_content)
-            await message.channel.send(f'Updated your name to {command_content}')
+            return await message.channel.send(f'Updated your name to {command_content}')
         elif command in self.update_email_commands:
             if not re.fullmatch(email_regex, command_content):
                 return await message.channel.send(f'Not a valid email!')
             self.user_data.update_email(user_id, command_content)
-            await message.channel.send(f'Updated your email to {command_content}')
+            return await message.channel.send(f'Updated your email to {command_content}')
         elif command in self.send_to_board_commands:
-            try:
-                send_to_board = bool(command_content)
-            except:
+            if command_content.lower() == 'true':
+                send_to_board = True
+            elif command_content.lower() == 'false':
+                send_to_board = False
+            else:
                 return await message.channel.send(f'Wrong input, go fix...')
             self.user_data.update_board(user_id, send_to_board)
+            return await message.channel.send(f'Done!')
         elif message.attachments:
             attachment = message.attachments[0]
-            # TODO: Add check for pdf file
-            if 'image' not in attachment.content_type:
+            if 'image' not in attachment.content_type and 'application/pdf' not in attachment.content_type:
                 return await message.channel.send(f'Not a valid image or pdf file')
             self.user_data.add_attachment(user_id, attachment.url)
+            return await message.channel.send(f'Done!')
         else:
-            self.user_data.add_data(message.author.id, content)
+            if self.user_data.add_data(message.author.id, content):
+                return await message.channel.send(f'Added the data!')
 
         return await message.channel.send('I don\' know what you mean :(')
 
