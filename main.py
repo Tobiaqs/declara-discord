@@ -117,9 +117,18 @@ class UserData:
         self.__init_user_if_not_exist(user_id)
         return self.user_data[user_id]['messages']
 
-    def get(self, user_id):
+    def get(self, user_id, human_readable=False):
         self.__init_user_if_not_exist(user_id)
-        return self.user_data[user_id]
+        data = self.user_data[user_id]
+        if human_readable:
+            return f'name: {data["name"]}\n' \
+                   f'email: {data["email"]}\n' \
+                   f'iban: {data["iban"]}\n' \
+                   f'messages: {data["attachments"]}\n' \
+                   f'send to board: {data["send_to_board"]}\n' \
+                   f'files: {data["attachments"]}'
+        else:
+            return self.user_data[user_id]
 
     def send(self, user_id):
         # TODO: VALIDATE CONTENT!
@@ -145,6 +154,9 @@ class MyClient(discord.Client):
     ]
     image_command = [
         '$image'
+    ]
+    info_commands = [
+        '$info'
     ]
     help_commands = [
         '$help',
@@ -196,6 +208,8 @@ class MyClient(discord.Client):
                 '$board <bool> = True: Set to true to also send an email to the board\n'
                 '$info: Gets the current info that I have about you\n'
             )
+        elif command in self.info_commands:
+            return await message.channel.send(self.user_data.get(user_id, True))
         elif command in self.reset_commands:
             await message.channel.send('Starting over ;\')')
             self.user_data.reset_user(user_id)
